@@ -93,7 +93,7 @@ nothing saying so.
 | `INVENTED` | more recipients produced than the string named |
 
 `INVENTED` and `DROPPED` fail in opposite directions, and a boolean collapses them. (Same
-distinction as DocConsolidator's `Fidelity`, reused for the same reason.)
+distinction as Shoehorn's `Fidelity`, reused for the same reason.)
 
 Comment depth is scanned on the **raw** string with a counter-based walk, not with a regex —
 because a regex provably cannot — and not on `parseaddr`'s output, because that has already

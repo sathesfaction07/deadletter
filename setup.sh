@@ -147,11 +147,11 @@ PY
 
 echo
 echo "==> the campaign, and what it can honestly claim"
-.venv/bin/recall-notifier report 2>&1 | sed -n "9,34p" || true
+.venv/bin/deadletter report 2>&1 | sed -n "9,34p" || true
 
 echo
 echo "==> check: fails only on what someone can fix"
-.venv/bin/recall-notifier check 2>&1 | tail -14 || true
+.venv/bin/deadletter check 2>&1 | tail -14 || true
 
 echo
 echo "==> tests"
@@ -160,4 +160,4 @@ rm -f .coverage
 
 echo
 echo "Done. Nothing above needed a network, a credential or an SMTP server."
-echo "Try: .venv/bin/recall-notifier states"
+echo "Try: .venv/bin/deadletter states"

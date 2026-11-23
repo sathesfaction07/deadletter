@@ -73,7 +73,7 @@ class Fidelity(StrEnum):
     """How a parsed address relates to the string it came from.
 
     Four values rather than a `valid: bool`, because INVENTED and DROPPED fail in opposite
-    directions and a boolean collapses them. Same distinction as DocConsolidator's Fidelity,
+    directions and a boolean collapses them. Same distinction as Shoehorn's Fidelity,
     and it is the same distinction for the same reason -- not a new idea, reused because the
     failure has the same shape.
     """

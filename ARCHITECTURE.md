@@ -1,4 +1,4 @@
-# RecallNotifier — Technical Architecture
+# Deadletter — Technical Architecture
 
 ## Overview
 
@@ -17,7 +17,7 @@ No model. The accuracy problem is RFC semantics and time arithmetic.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                        CLI (recall-notifier)                                  │
+│                        CLI (deadletter)                                  │
 │                                                                              │
 │  doctor     config; and which claims rest on a SPEC, which on IMPLEMENTATION  │
 │             BEHAVIOUR, and which are outright GUESSES that go stale           │
@@ -159,7 +159,7 @@ No model. The accuracy problem is RFC semantics and time arithmetic.
 │                                                                              │
 │  Fidelity  CLEAN / NORMALISED / DROPPED / INVENTED. Four values rather than   │
 │    a `valid: bool`, because INVENTED and DROPPED fail in OPPOSITE directions  │
-│    and a boolean collapses them. (Same distinction as DocConsolidator's       │
+│    and a boolean collapses them. (Same distinction as Shoehorn's       │
 │    Fidelity, reused for the same reason -- not offered as new.)               │
 │                                                                              │
 │    The two ways of being DROPPED get DIFFERENT explanations, because they     │
@@ -252,7 +252,7 @@ No model. The accuracy problem is RFC semantics and time arithmetic.
 │  why a value-presence check passes and         in the output rather than      │
 │  says nothing.                                 buried in a config value.     │
 │                                                                              │
-│  (DocConsolidator's finding through a          informed_ceiling is named a    │
+│  (Shoehorn's finding through a          informed_ceiling is named a    │
 │  different door. Difference: here BOTH         CEILING so nobody reads it as  │
 │  documents ship, and only one is read.)        a count of people reached.     │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -290,7 +290,7 @@ Five addresses, between one and five people, and nothing observable settles it.
 ## Data Flow
 
 ```
-1.  recall-notifier report
+1.  deadletter report
 2.  load 29 rows verbatim -- NO sanitising, because the input is the subject
 3.  parse each: 24 CLEAN, 2 NORMALISED (comments stripped silently), 2 DROPPED,
       1 INVENTED (a display-name comma became a surname-as-recipient)

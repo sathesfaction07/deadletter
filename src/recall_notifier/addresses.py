@@ -32,7 +32,7 @@ from .models import Fidelity, ParsedAddress
 # refuses them at import time too, for anyone running from a source checkout.
 if "strict" not in inspect.signature(getaddresses).parameters:  # pragma: no cover
     raise RuntimeError(
-        "recall-notifier needs a Python with the CVE-2023-27043 email parser fix "
+        "deadletter needs a Python with the CVE-2023-27043 email parser fix "
         "(3.11.10+, 3.12.6+ or 3.13+). This interpreter's email.utils parses addresses "
         "differently, so the tool's findings would not hold."
     )

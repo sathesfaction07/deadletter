@@ -6,7 +6,7 @@ whether they make the same claims is nobody's job.
 
 That matters here because the facts in a recall notice are the point: which lot, which
 hazard, what to do. If the text part is generated from the HTML by stripping tags, a fact
-that lived in a table can vanish -- which is DocConsolidator's finding about markdown,
+that lived in a table can vanish -- which is Shoehorn's finding about markdown,
 arriving again through a different door. The difference is that here BOTH documents ship,
 and only one is read.
 

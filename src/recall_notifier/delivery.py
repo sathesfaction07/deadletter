@@ -19,7 +19,7 @@ The inversion worth noticing: the only signals that determine an outcome are the
 ones. A 5xx rejection pins the state exactly. Silence never does. You can learn that you
 failed; you cannot learn that you succeeded.
 
-(The not-injective shape is the same one DocConsolidator found in the heading-level to
+(The not-injective shape is the same one Shoehorn found in the heading-level to
 outline map. Reused because the failure has the same structure, not offered as new.)
 """
 

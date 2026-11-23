@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "recall-notifier"
+name = "deadletter"
 version = "0.1.0"
 description = "Sends recall notices, then reports what a delivery report cannot tell you"
 # The CVE-2023-27043 email-parser fix landed in 3.11.10 and 3.12.6. Earlier patch
@@ -25,7 +25,7 @@ dev = [
 ]
 
 [project.scripts]
-recall-notifier = "recall_notifier.cli:cli"
+deadletter = "recall_notifier.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

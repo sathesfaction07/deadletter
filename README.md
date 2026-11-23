@@ -1,8 +1,8 @@
-# RecallNotifier
+# Deadletter
 
 When a product is recalled, every buyer has to be told before a deadline. Sending the email is
 easy. Knowing who actually got it is not: a bounce report lists some of the failures, and four
-of the outcomes that matter produce no signal at all. RecallNotifier sends the notice, then
+of the outcomes that matter produce no signal at all. Deadletter sends the notice, then
 reports recipient by recipient what the delivery data can and cannot tell you, including the
 addresses that should never have been sent to in the first place.
 
@@ -170,7 +170,7 @@ The tag-stripping shortcut produces:
 
 The header cells and the data cells are now adjacent to **each other**, so `LOT-4471` sits
 next to nothing saying it is a lot number. **The value survives; the fact does not** — which
-is why a value-presence check passes and says nothing. (DocConsolidator's finding arriving
+is why a value-presence check passes and says nothing. (Shoehorn's finding arriving
 through a different door. The difference: here both documents ship, and only one is read.)
 
 ---
@@ -194,17 +194,17 @@ Two. And one of those two was a rejection.
 bash setup.sh                      # re-derives every finding above
 source .venv/bin/activate
 
-recall-notifier doctor             # config, and which claims are weaker than a spec
-recall-notifier addresses          # why no regex works; the stdlib against itself
-recall-notifier identity           # how many people this list is, under each policy
-recall-notifier merges --policy folded
-recall-notifier states             # what a signal tells you, and what it cannot
-recall-notifier timing             # when the answer arrives against when it was needed
-recall-notifier compose            # the two-document problem
-recall-notifier compose --text-from-html
-recall-notifier report -o out/     # the honest report
-recall-notifier check              # exit 1 on what is fixable at source
-recall-notifier explain "Sato, Kenji <k.sato@example.jp>"
+deadletter doctor             # config, and which claims are weaker than a spec
+deadletter addresses          # why no regex works; the stdlib against itself
+deadletter identity           # how many people this list is, under each policy
+deadletter merges --policy folded
+deadletter states             # what a signal tells you, and what it cannot
+deadletter timing             # when the answer arrives against when it was needed
+deadletter compose            # the two-document problem
+deadletter compose --text-from-html
+deadletter report -o out/     # the honest report
+deadletter check              # exit 1 on what is fixable at source
+deadletter explain "Sato, Kenji <k.sato@example.jp>"
 ```
 
 | Command | Exit |

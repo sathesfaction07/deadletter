@@ -98,7 +98,7 @@ to refuse.
 
 ## Note on novelty
 
-The non-injective map is the same shape DocConsolidator found between heading levels and
+The non-injective map is the same shape Shoehorn found between heading levels and
 document outlines. Reused because the failure has the same structure, not offered as new.
 The difference: an outline collapse is recoverable if you keep the source, and a discarded
 message is gone.

@@ -39,7 +39,7 @@ jobs:
         run: pytest -q --cov=recall_notifier --cov-report=term-missing
 
       - name: Doctor runs with no network and no credentials
-        run: recall-notifier doctor
+        run: deadletter doctor
 
       - name: RFC 5322 comments nest, so no regex recognises the language
         run: |
@@ -301,7 +301,7 @@ jobs:
 
       - name: The report publishes a range, never a number
         run: |
-          recall-notifier report -o /tmp/out || true
+          deadletter report -o /tmp/out || true
           python - <<'PY'
           import json
 
@@ -330,54 +330,54 @@ jobs:
 
       - name: check gates on what is fixable, not on the world
         run: |
-          ! recall-notifier check
-          recall-notifier check | grep -q 'no mailbox found for 2 row(s)'
-          recall-notifier check | grep -q 'more recipients than they named'
-          recall-notifier check | grep -q 'Reported and NOT failed on'
-          recall-notifier check | grep -q 'switched off inside a week'
-          recall-notifier check | grep -q 'never-decidable outcomes'
-          recall-notifier check | grep -q 'FAIL'
+          ! deadletter check
+          deadletter check | grep -q 'no mailbox found for 2 row(s)'
+          deadletter check | grep -q 'more recipients than they named'
+          deadletter check | grep -q 'Reported and NOT failed on'
+          deadletter check | grep -q 'switched off inside a week'
+          deadletter check | grep -q 'never-decidable outcomes'
+          deadletter check | grep -q 'FAIL'
 
           # A clean list PASSES even though every outcome is undecidable, because nobody can
           # fix that and a gate firing on it would be switched off.
           mkdir -p /tmp/clean
           printf 'address,name,lot\na@example.com,A,L\nb@example.com,B,L\n' > /tmp/clean/r.csv
-          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check
-          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check | grep -q 'Nothing fixable at source'
-          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check | grep -q 'never-decidable outcomes'
-          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check | grep -q PASS
+          RN_RECIPIENTS=/tmp/clean/r.csv deadletter check
+          RN_RECIPIENTS=/tmp/clean/r.csv deadletter check | grep -q 'Nothing fixable at source'
+          RN_RECIPIENTS=/tmp/clean/r.csv deadletter check | grep -q 'never-decidable outcomes'
+          RN_RECIPIENTS=/tmp/clean/r.csv deadletter check | grep -q PASS
 
           # ...but a message whose two parts disagree does fail, because that IS fixable.
-          ! RN_RECIPIENTS=/tmp/clean/r.csv RN_TEXT_FROM_HTML=true recall-notifier check
+          ! RN_RECIPIENTS=/tmp/clean/r.csv RN_TEXT_FROM_HTML=true deadletter check
           echo "undecidable delivery does not gate; a divergent template does"
 
       - name: Every command publishes its reasoning
         run: |
-          recall-notifier doctor | grep -q 'none used, ever'
-          recall-notifier doctor | grep -q 'outcomes come from a fixture'
-          recall-notifier doctor | grep -q 'resting on IMPLEMENTATION behaviour'
-          recall-notifier doctor | grep -q 'GUESSES, and go stale'
-          recall-notifier doctor | grep -q 'is a judgement, not a fact'
-          recall-notifier addresses | grep -q 'comment contains itself'
-          recall-notifier addresses | grep -q 'NOT A REGULAR LANGUAGE'
-          recall-notifier addresses | grep -q 'least rigorous'
-          recall-notifier addresses | grep -q 'never told the product is dangerous'
-          recall-notifier addresses | grep -q 'INVENTS a recipient, the other DROPS it'
-          recall-notifier identity | grep -q 'case sensitive'
-          recall-notifier identity | grep -q 'goes stale'
-          recall-notifier merges --policy folded | grep -q 'kept apart by'
-          recall-notifier states | grep -q 'read, in_inbox, in_spam, discarded'
-          recall-notifier states | grep -q 'from 5 to 4. Never to one'
-          recall-notifier states | grep -q 'cannot learn that you succeeded'
-          recall-notifier timing | grep -q 'at least 4-5 days'
-          recall-notifier timing | grep -q 'post-mortem tool, not a recall tool'
-          recall-notifier compose | grep -q 'both parts carry every fact'
-          recall-notifier compose --text-from-html | grep -q 'disagree on 2 fact(s)'
-          recall-notifier report | grep -q 'This is a FLOOR, not a total'
-          recall-notifier report | grep -q 'Not a count of people reached'
-          recall-notifier explain 'quentin(work)@example.com' | grep -q 'SILENTLY removed it'
-          recall-notifier explain 'dlindqvist@example.se' | grep -q 'known too late to act'
-          recall-notifier explain 'nobody@nowhere.example' | grep -q 'no row supplied as'
+          deadletter doctor | grep -q 'none used, ever'
+          deadletter doctor | grep -q 'outcomes come from a fixture'
+          deadletter doctor | grep -q 'resting on IMPLEMENTATION behaviour'
+          deadletter doctor | grep -q 'GUESSES, and go stale'
+          deadletter doctor | grep -q 'is a judgement, not a fact'
+          deadletter addresses | grep -q 'comment contains itself'
+          deadletter addresses | grep -q 'NOT A REGULAR LANGUAGE'
+          deadletter addresses | grep -q 'least rigorous'
+          deadletter addresses | grep -q 'never told the product is dangerous'
+          deadletter addresses | grep -q 'INVENTS a recipient, the other DROPS it'
+          deadletter identity | grep -q 'case sensitive'
+          deadletter identity | grep -q 'goes stale'
+          deadletter merges --policy folded | grep -q 'kept apart by'
+          deadletter states | grep -q 'read, in_inbox, in_spam, discarded'
+          deadletter states | grep -q 'from 5 to 4. Never to one'
+          deadletter states | grep -q 'cannot learn that you succeeded'
+          deadletter timing | grep -q 'at least 4-5 days'
+          deadletter timing | grep -q 'post-mortem tool, not a recall tool'
+          deadletter compose | grep -q 'both parts carry every fact'
+          deadletter compose --text-from-html | grep -q 'disagree on 2 fact(s)'
+          deadletter report | grep -q 'This is a FLOOR, not a total'
+          deadletter report | grep -q 'Not a count of people reached'
+          deadletter explain 'quentin(work)@example.com' | grep -q 'SILENTLY removed it'
+          deadletter explain 'dlindqvist@example.se' | grep -q 'known too late to act'
+          deadletter explain 'nobody@nowhere.example' | grep -q 'no row supplied as'
           echo "all commands explain themselves"
 
   test-windows:
