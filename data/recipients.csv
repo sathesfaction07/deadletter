@@ -1,0 +1,30 @@
+address,name,lot,note
+alice.tan@example.com,Alice Tan,LOT-4471,plain
+bmehta@example.net,Bhavna Mehta,LOT-4471,plain
+c.okafor@example.org,Chidi Okafor,LOT-4471,plain
+dlindqvist@example.se,Dag Lindqvist,LOT-4472,plain
+e.rossi@example.it,Elena Rossi,LOT-4471,plain
+f.dubois@example.fr,Francois Dubois,LOT-4472,plain
+g.nakamura@example.jp,Goro Nakamura,LOT-4471,plain
+hsingh@example.in,Harpreet Singh,LOT-4472,plain
+i.kovacs@example.hu,Ilona Kovacs,LOT-4471,plain
+jwalsh@example.ie,Jim Walsh,LOT-4471,plain
+k.mueller@example.de,Klaus Mueller,LOT-4472,plain
+lmorales@example.mx,Lucia Morales,LOT-4471,plain
+Nadia.Farouk@example.com,Nadia Farouk,LOT-4471,case variant A
+nadia.farouk@example.com,Nadia Farouk,LOT-4471,case variant B
+NADIA.FAROUK@EXAMPLE.COM,N Farouk,LOT-4471,"case variant C, domain too"
+o.brien.sean@gmail.com,Sean O'Brien,LOT-4472,gmail dots
+obriensean@gmail.com,Sean O'Brien,LOT-4472,"gmail no dots, same mailbox"
+obriensean+recall@gmail.com,S O'Brien,LOT-4472,"gmail +tag, same mailbox"
+o.brien.sean+2026@gmail.com,Sean OB,LOT-4472,gmail dots AND +tag
+p.reyes@example.ph,Paolo Reyes,LOT-4471,dots on a non-folding domain
+preyes@example.ph,Priya Reyes,LOT-4471,"different person, same folded key"
+quentin(work)@example.com,Quentin Blake,LOT-4472,"comment, depth 1"
+rosa((home))@example.com,Rosa Diaz,LOT-4471,"comment, depth 2"
+"Sato, Kenji <k.sato@example.jp>",Kenji Sato,LOT-4471,comma in display name
+"""tomas nunez""@example.es",Tomas Nunez,LOT-4472,quoted local part with a space
+u.chen@[203.0.113.9],Uma Chen,LOT-4471,RFC 5321 4.1.3 address literal
+victor-no-at-sign,Victor Hugo,LOT-4472,no @ anywhere
+alice.tan@example.com,Alice Tan,LOT-4471,exact duplicate of row 1
+safety@example.coop,Safety Desk,LOT-4471,"role address, unknown readership"

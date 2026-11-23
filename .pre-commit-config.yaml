@@ -1,0 +1,51 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      # The corpus must keep producing every outcome the tests assert about. A missing
+      # value makes those assertions VACUOUS rather than failing, which is the quiet way
+      # a corpus stops testing anything.
+      - id: corpus-still-exercises-every-case
+        name: the corpus still produces every documented outcome
+        entry: >
+          python -c "import sys; sys.path[:0] = ['src', 'data'];
+          from pathlib import Path;
+          from generate import PLANTED, ROWS;
+          from recall_notifier.campaign import load_recipients, run_campaign;
+          from recall_notifier.cli import NOTICE;
+          from recall_notifier.models import Decidability, Fidelity, Normalisation, Signal;
+          missing = set(PLANTED) - {r[0] for r in ROWS};
+          assert not missing, f'planted rows gone from the corpus: {missing}';
+          rs = load_recipients(Path('data/recipients.csv'));
+          rep, _ = run_campaign(rs, NOTICE, deadline_hours=24, give_up_hours=96, policy=Normalisation.RFC5321);
+          sigs = {r.attempt.signal for r in rep.rows if r.attempt};
+          assert sigs == set(Signal), f'corpus no longer produces {sorted(s.value for s in set(Signal) - sigs)}';
+          dec = {r.verdict.decidability for r in rep.rows if r.verdict};
+          assert dec == set(Decidability), f'missing decidability {sorted(d.value for d in set(Decidability) - dec)}';
+          fid = {r.parsed.fidelity for r in rep.rows};
+          assert fid == set(Fidelity), f'missing fidelity {sorted(f.value for f in set(Fidelity) - fid)}';
+          kbd = {r.verdict.known_by_deadline for r in rep.rows if r.verdict};
+          assert kbd == {True, False}, 'both sides of the deadline must occur';
+          assert not rep.bounds.observable, 'the ambiguity gap must be non-empty or the point is lost';
+          assert rep.bounds.silent > 0 and rep.bounds.pending > 0;
+          print(f'{rep.supplied} rows, {rep.attempted} attempted, floor {rep.bounds.floor} ceiling {rep.bounds.ceiling}, all outcomes present')"
+        language: system
+        pass_filenames: false
+        files: ^(data/|src/recall_notifier/campaign\.py)

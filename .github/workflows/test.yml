@@ -1,0 +1,381 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    env:
+      # Rich wraps to the terminal width, and a CI runner reports 80. The greps below
+      # assert on whole sentences, so give it room rather than asserting on fragments.
+      COLUMNS: "200"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests data
+
+      - name: The corpus is reproducible from the generator
+        run: |
+          python data/generate.py
+          test "$(tail -n +2 data/recipients.csv | wc -l)" -eq 29
+
+      - name: Test
+        run: pytest -q --cov=recall_notifier --cov-report=term-missing
+
+      - name: Doctor runs with no network and no credentials
+        run: recall-notifier doctor
+
+      - name: RFC 5322 comments nest, so no regex recognises the language
+        run: |
+          python - <<'PY'
+          from recall_notifier.addresses import (
+              SHIPPED_REGEXES, demonstrate_non_regularity, nested_comment_address,
+              regex_verdicts, strip_comments,
+          )
+
+          # Every depth is a VALID address, because comments are semantically transparent.
+          for depth in range(1, 9):
+              address = nested_comment_address(depth)
+              assert strip_comments(address.rpartition("@")[0]) == ("user", depth)
+
+          # Not a threshold effect: the verdicts never change with depth. The two careful
+          # regexes reject a valid address at EVERY depth including 1.
+          baseline = regex_verdicts(nested_comment_address(1))
+          for depth, _, verdicts in demonstrate_non_regularity(6):
+              assert verdicts == baseline, (depth, verdicts)
+              assert sum(verdicts.values()) == 1, "exactly one shipped regex accepts it"
+          assert baseline["the one everyone writes"] is True
+          assert baseline["the careful one"] is False
+          assert baseline['the "RFC-compliant" one'] is False
+
+          # A counter-based scan handles what a regex cannot, and respects quoting.
+          assert strip_comments("a(1)b(2)c") == ("abc", 1)
+          assert strip_comments('"u(x)"') == ('"u(x)"', 0)
+          for bad in ("user(", "user)", "u((x)"):
+              try:
+                  strip_comments(bad)
+                  raise AssertionError(f"{bad!r} should be rejected, not guessed at")
+              except ValueError:
+                  pass
+
+          assert len(SHIPPED_REGEXES) == 3
+          print("the least rigorous regex is the only one that delivers this notice")
+          PY
+
+      - name: The stdlib disagrees with itself, in both directions
+        run: |
+          python - <<'PY'
+          from recall_notifier.addresses import is_address_literal, parse_address, stdlib_readings
+          from recall_notifier.models import Fidelity
+
+          # Accepts a string with no @ at all, and does NOT signal failure.
+          single, _ = stdlib_readings("not-an-address")
+          assert single == "not-an-address" and "@" not in single
+
+          # Refuses a domain form RFC 5321 4.1.3 explicitly permits.
+          assert stdlib_readings("user@[192.168.1.1]")[0] == ""
+          assert is_address_literal("[192.168.1.1]")
+
+          # One row naming one person -> TWO recipients, the first a surname; and parseaddr
+          # returns nothing for the same string. One INVENTS, the other DROPS.
+          single, many = stdlib_readings("Doe, John <john@example.com>")
+          assert single == "" and many == ["Doe", "john@example.com"]
+
+          # Comments are stripped silently, so the mailbox is not the string supplied.
+          for raw in ("user(x)@example.com", "user(a(b)c)@example.com", "us(er)@ex.com"):
+              assert "(" not in stdlib_readings(raw)[0]
+
+          # All four fidelities, and the comment branch is REACHABLE -- it was dead code
+          # when the depth scan ran on parseaddr's already-stripped output.
+          seen = {}
+          for raw in ("a@b.com", "quentin(work)@example.com", "Doe, John <j@e.com>", "nope"):
+              seen[raw] = parse_address(raw)
+          assert {p.fidelity for p in seen.values()} == set(Fidelity)
+          assert "nested 1 deep" in seen["quentin(work)@example.com"].detail
+          assert "SILENTLY" in seen["quentin(work)@example.com"].detail
+          assert seen["Doe, John <j@e.com>"].claimed_count == 2
+
+          # The two ways of being DROPPED are different failures and say so differently.
+          handed_back = parse_address("victor-no-at-sign")
+          refused = parse_address("u.chen@[203.0.113.9]")
+          assert handed_back.fidelity is refused.fidelity is Fidelity.DROPPED
+          assert "would try to deliver to it" in handed_back.detail
+          assert "dropped in silence" in refused.detail
+          print("one parser invents a recipient, the other drops it, on the same input")
+          PY
+
+      - name: A recipient count is a function of policy, not of the list
+        run: |
+          python - <<'PY'
+          from recall_notifier.identity import (
+              FOLDING_DOMAINS, asymmetry_note, collisions, identity_spread, normalise,
+              normalise_per_domain,
+          )
+          from recall_notifier.models import Normalisation
+
+          # RFC 5321 2.4: the LOCAL PART is case-sensitive; only the domain is not.
+          assert normalise("John@Example.COM", Normalisation.RFC5321) == "John@example.com"
+          assert normalise("John@Example.COM", Normalisation.LOWERCASE) == "john@example.com"
+
+          addresses = [
+              "John.Doe@Example.COM",
+              "john.doe@example.com",
+              "j.o.h.n.d.o.e@example.com",
+              "johndoe+recall@example.com",
+              "JOHNDOE@EXAMPLE.COM",
+          ]
+          spread = identity_spread(addresses)
+          assert spread.counts == {"exact": 5, "rfc5321": 5, "lowercase": 4, "folded": 1}
+          assert (spread.narrowest, spread.widest) == (1, 5)
+          assert spread.possible_duplicates == spread.possible_silences == 4
+
+          note = asymmetry_note(spread)
+          assert "never told their product is dangerous" in note
+          assert "the brief asks to" in note
+
+          # An unambiguous list must say so, and must not generalise from it.
+          quiet = identity_spread(["a@x.example", "b@x.example"])
+          assert not quiet.ambiguous
+          assert "not a general result" in asymmetry_note(quiet)
+
+          # The obvious improvement does not escape the problem -- it still rests on a guess.
+          assert normalise_per_domain("a.b@gmail.com") == "ab@gmail.com"
+          assert normalise_per_domain("a.b@example.ph") == "a.b@example.ph"
+          assert "gmail.com" in FOLDING_DOMAINS
+
+          merged = collisions(["a.b@gmail.com", "ab@gmail.com"], Normalisation.FOLDED)
+          assert len(merged) == 1
+          assert set(merged[0].separated_by) >= {"exact", "rfc5321"}
+          print("5 addresses are between 1 and 5 people, and nothing observable settles it")
+          PY
+
+      - name: Four outcomes emit nothing, and waiting narrows it by exactly one
+        run: |
+          python - <<'PY'
+          from recall_notifier.delivery import (
+              AMBIGUITY_FLOOR, SILENT_STATES, collapse_table, consistent_states,
+              decidability, emits_signal, failure_bounds, verdict,
+          )
+          from recall_notifier.models import (
+              FAILURE_STATES, Attempt, Decidability, Signal, TrueState,
+          )
+
+          def attempt(signal, hours=0.0, code=None):
+              return Attempt(
+                  mailbox="a@b.example", signal=signal, elapsed_hours=hours, smtp_code=code
+              )
+
+          assert AMBIGUITY_FLOOR == 4
+          assert sum(1 for s in SILENT_STATES if s in FAILURE_STATES) == 2
+          assert {s for s in TrueState if emits_signal(s) is Signal.NOTHING} == set(SILENT_STATES)
+
+          # The same outcome produces two signals; the only difference is WHEN it was found.
+          assert emits_signal(TrueState.NEVER_ACCEPTED, discovered_at_handover=True) is Signal.REJECTED
+          assert emits_signal(TrueState.NEVER_ACCEPTED, discovered_at_handover=False) is Signal.BOUNCED
+
+          # No empty bucket -- `bounced` had zero outcomes before the timing axis existed.
+          for name, count, _, which in collapse_table():
+              assert count >= 1 and which, f"{name} is an empty bucket"
+
+          # Closing the retry window removes EXACTLY ONE candidate. Never down to one.
+          before, after = consistent_states(Signal.NOTHING, False), consistent_states(Signal.NOTHING, True)
+          assert set(before) - set(after) == {TrueState.IN_FLIGHT}
+          assert len(after) == AMBIGUITY_FLOOR > 1
+
+          # THE INVERSION: only the negative signals ever settle anything.
+          decisive = {s for s in Signal if len(consistent_states(s, True)) == 1}
+          assert decisive == {Signal.REJECTED, Signal.BOUNCED}
+          assert all(consistent_states(s, True)[0] in FAILURE_STATES for s in decisive)
+          assert {decidability(s) for s in Signal} == set(Decidability)
+
+          # A deferred message is NOT settled -- IN_FLIGHT is not an outcome.
+          deferred = verdict(attempt(Signal.DEFERRED, 2.0, 451), 24.0, 96.0)
+          assert not deferred.determined and deferred.ambiguous_about_failure
+
+          # A late bounce is correct and useless; an early one is actionable.
+          assert not verdict(attempt(Signal.BOUNCED, 78.0), 24.0, 96.0).known_by_deadline
+          assert verdict(attempt(Signal.BOUNCED, 3.0), 24.0, 96.0).known_by_deadline
+          assert verdict(attempt(Signal.REJECTED, 0.0, 550), 24.0, 96.0).known_by_deadline
+
+          # The gap splits into permanent and merely-late; an earlier summary called it all
+          # permanent, which was wrong for the deferred rows.
+          bounds = failure_bounds([
+              verdict(attempt(Signal.REJECTED, 0.0, 550), 24.0, 96.0),
+              verdict(attempt(Signal.NOTHING), 24.0, 96.0),
+              verdict(attempt(Signal.DEFERRED, 2.0, 451), 24.0, 96.0),
+          ])
+          assert (bounds.floor, bounds.ceiling) == (1, 3)
+          assert bounds.silent == 1 and bounds.pending == 1
+          assert bounds.silent + bounds.pending == bounds.gap
+          assert "never produce a signal" in bounds.summary()
+          assert "only after the deadline" in bounds.summary()
+          print("silence stays 4-way ambiguous for ever; only a NO is ever unambiguous")
+          PY
+
+      - name: The answer arrives after the deadline (RFC 5321 4.5.4.1)
+        run: |
+          python - <<'PY'
+          from recall_notifier.timing import SPEC_MINIMUM_GIVE_UP_HOURS, Budget, budget_table
+
+          assert SPEC_MINIMUM_GIVE_UP_HOURS == 96.0
+
+          tight = Budget(deadline_hours=24.0, give_up_hours=96.0)
+          assert tight.lag_ratio == 4.0
+          assert tight.deadline_inside_window
+          assert tight.actionable_classes == 1
+          decidable = tight.decidable_by_deadline()
+          assert decidable["rejected"] is True
+          assert decidable["bounced"] is decidable["deferred"] is decidable["nothing"] is False
+          assert "says NO" in tight.summary()
+
+          # Silence is never actionable, at any deadline whatsoever.
+          for deadline in (1.0, 24.0, 240.0, 10_000.0):
+              assert Budget(deadline_hours=deadline, give_up_hours=96.0).decidable_by_deadline()["nothing"] is False
+
+          comfortable = Budget(deadline_hours=200.0, give_up_hours=96.0)
+          assert not comfortable.deadline_inside_window
+          assert "not the one recalls are in" in comfortable.summary()
+
+          rows = budget_table()
+          assert next(r for r in rows if r[0] == 24.0)[2] == 1
+          assert any(inside for *_, inside in rows) and any(not inside for *_, inside in rows)
+          print("96h retry window against a 24h deadline: 4x too late")
+          PY
+
+      - name: A multipart/alternative message is two documents
+        run: |
+          python - <<'PY'
+          from recall_notifier.cli import NOTICE
+          from recall_notifier.compose import Notice, render, strip_tags
+
+          # Rendered properly, both parts carry every fact. An earlier check measured raw
+          # character distance in a 40-char window and failed the CORRECT template at 42,
+          # because the gap is made of markup.
+          good = render(NOTICE)
+          assert good.agree and good.missing_from_html == () == good.missing_from_text
+
+          # The tag-stripping shortcut loses the label-to-value ASSOCIATION.
+          shortcut = render(NOTICE, text_from_html=True)
+          assert not shortcut.agree
+          assert set(shortcut.missing_from_text) == {"lot", "sold_between"}
+          assert shortcut.missing_from_html == ()
+
+          # The values survive; the facts do not -- so a value-presence check says nothing.
+          assert NOTICE.lot in shortcut.text
+          assert "lot" in shortcut.missing_from_text
+
+          # And it must not pass VACUOUSLY: everything is on one line after stripping, so a
+          # same-line check could not fail. That is the all([]) trap in other clothes.
+          assert shortcut.text.count("\n") == 0
+          assert shortcut.missing_from_text
+
+          assert strip_tags("<p>a</p>\n<p>b</p>") == "a b"
+          assert "mail client" in shortcut.summary()
+
+          # A recall notice with a blank field cannot ship.
+          facts = dict(product="p", hazard="h", lot="l", sold_between="s", remedy="r", reference="R")
+          for field in facts:
+              try:
+                  Notice(**{**facts, field: "   "})
+                  raise AssertionError(f"a blank {field} should not validate")
+              except Exception:
+                  pass
+          print("the two parts of one message can assert different facts, and nothing checks")
+          PY
+
+      - name: The report publishes a range, never a number
+        run: |
+          recall-notifier report -o /tmp/out || true
+          python - <<'PY'
+          import json
+
+          payload = json.load(open("/tmp/out/report.json"))
+          assert payload["supplied"] == 29
+          assert payload["attempted"] == 26
+          assert payload["failures_floor"] == 5
+          assert payload["failures_ceiling"] == 26
+          assert payload["never_decidable"] == 18
+          assert payload["decidable_late"] == 3
+          assert payload["never_decidable"] + payload["decidable_late"] == (
+              payload["failures_ceiling"] - payload["failures_floor"]
+          )
+          assert payload["lag_ratio"] == 4.0
+          assert payload["undeliverable"] == ["u.chen@[203.0.113.9]", "victor-no-at-sign"]
+          assert payload["invented"] == ["Sato, Kenji <k.sato@example.jp>"]
+          assert payload["suppressed"] == ["alice.tan@example.com"]
+          assert payload["rendered_agree"] is True
+
+          counts = payload["identity_counts"]
+          assert counts["folded"] < counts["rfc5321"], "the policy choice must matter here"
+          assert len(set(counts.values())) > 1
+          print(f"between {payload['failures_floor']} and {payload['failures_ceiling']} of "
+                f"{payload['attempted']} were not informed; {payload['never_decidable']} never knowable")
+          PY
+
+      - name: check gates on what is fixable, not on the world
+        run: |
+          ! recall-notifier check
+          recall-notifier check | grep -q 'no mailbox found for 2 row(s)'
+          recall-notifier check | grep -q 'more recipients than they named'
+          recall-notifier check | grep -q 'Reported and NOT failed on'
+          recall-notifier check | grep -q 'switched off inside a week'
+          recall-notifier check | grep -q 'never-decidable outcomes'
+          recall-notifier check | grep -q 'FAIL'
+
+          # A clean list PASSES even though every outcome is undecidable, because nobody can
+          # fix that and a gate firing on it would be switched off.
+          mkdir -p /tmp/clean
+          printf 'address,name,lot\na@example.com,A,L\nb@example.com,B,L\n' > /tmp/clean/r.csv
+          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check
+          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check | grep -q 'Nothing fixable at source'
+          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check | grep -q 'never-decidable outcomes'
+          RN_RECIPIENTS=/tmp/clean/r.csv recall-notifier check | grep -q PASS
+
+          # ...but a message whose two parts disagree does fail, because that IS fixable.
+          ! RN_RECIPIENTS=/tmp/clean/r.csv RN_TEXT_FROM_HTML=true recall-notifier check
+          echo "undecidable delivery does not gate; a divergent template does"
+
+      - name: Every command publishes its reasoning
+        run: |
+          recall-notifier doctor | grep -q 'none used, ever'
+          recall-notifier doctor | grep -q 'outcomes come from a fixture'
+          recall-notifier doctor | grep -q 'resting on IMPLEMENTATION behaviour'
+          recall-notifier doctor | grep -q 'GUESSES, and go stale'
+          recall-notifier doctor | grep -q 'is a judgement, not a fact'
+          recall-notifier addresses | grep -q 'comment contains itself'
+          recall-notifier addresses | grep -q 'NOT A REGULAR LANGUAGE'
+          recall-notifier addresses | grep -q 'least rigorous'
+          recall-notifier addresses | grep -q 'never told the product is dangerous'
+          recall-notifier addresses | grep -q 'INVENTS a recipient, the other DROPS it'
+          recall-notifier identity | grep -q 'case sensitive'
+          recall-notifier identity | grep -q 'goes stale'
+          recall-notifier merges --policy folded | grep -q 'kept apart by'
+          recall-notifier states | grep -q 'read, in_inbox, in_spam, discarded'
+          recall-notifier states | grep -q 'from 5 to 4. Never to one'
+          recall-notifier states | grep -q 'cannot learn that you succeeded'
+          recall-notifier timing | grep -q 'at least 4-5 days'
+          recall-notifier timing | grep -q 'post-mortem tool, not a recall tool'
+          recall-notifier compose | grep -q 'both parts carry every fact'
+          recall-notifier compose --text-from-html | grep -q 'disagree on 2 fact(s)'
+          recall-notifier report | grep -q 'This is a FLOOR, not a total'
+          recall-notifier report | grep -q 'Not a count of people reached'
+          recall-notifier explain 'quentin(work)@example.com' | grep -q 'SILENTLY removed it'
+          recall-notifier explain 'dlindqvist@example.se' | grep -q 'known too late to act'
+          recall-notifier explain 'nobody@nowhere.example' | grep -q 'no row supplied as'
+          echo "all commands explain themselves"
