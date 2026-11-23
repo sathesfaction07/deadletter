@@ -18,10 +18,24 @@ dangerous. The careful-looking regexes err in the expensive direction.
 
 from __future__ import annotations
 
+import inspect
 import re
 from email.utils import getaddresses, parseaddr
 
 from .models import Fidelity, ParsedAddress
+
+# The parser behaviour this tool reports on changed in CPython's fix for CVE-2023-27043
+# (3.11.10, 3.12.6, 3.13.0): `parseaddr` and `getaddresses` became strict about ambiguous
+# input and gained a `strict` parameter. On an older interpreter the same rows parse
+# differently -- with the parser that was vulnerable -- so every count here would silently
+# change. pyproject's requires-python refuses those interpreters at install time; this
+# refuses them at import time too, for anyone running from a source checkout.
+if "strict" not in inspect.signature(getaddresses).parameters:  # pragma: no cover
+    raise RuntimeError(
+        "recall-notifier needs a Python with the CVE-2023-27043 email parser fix "
+        "(3.11.10+, 3.12.6+ or 3.13+). This interpreter's email.utils parses addresses "
+        "differently, so the tool's findings would not hold."
+    )
 
 #: RFC 5322 3.2.2. Quoted here because the recursion is the entire argument.
 COMMENT_GRAMMAR = (

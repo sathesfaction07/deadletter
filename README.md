@@ -1,12 +1,18 @@
 # RecallNotifier
 
-Sends a product recall notice, then reports what a delivery report **cannot** tell you.
+When a product is recalled, every buyer has to be told before a deadline. Sending the email is
+easy. Knowing who actually got it is not: a bounce report lists some of the failures, and four
+of the outcomes that matter produce no signal at all. RecallNotifier sends the notice, then
+reports recipient by recipient what the delivery data can and cannot tell you, including the
+addresses that should never have been sent to in the first place.
 
-No model. The accuracy problem here is RFC semantics and time arithmetic.
+The difficult parts are RFC address grammar and timing, not machine learning.
 
 ---
 
-## The Brief's Verdict Is False
+## Bounce Tracking Does Not Tell You Who Missed the Notice
+
+The requirements note this project started from concluded:
 
 > **Verdict:** SES for delivery confidence. Bounce/complaint tracking tells you who didn't
 > receive it.
@@ -291,8 +297,12 @@ as judgements by `doctor` rather than presented as findings.
 **The corpus is mine and it is small.** "2 of 26 knowable in time" is a fact about 29 rows I
 wrote, not an estimate for anyone's recipient list.
 
-**The `parseaddr` claims rest on implementation behaviour**, not on a spec. A CPython change
-could invalidate them.
+**The `parseaddr` claims rest on implementation behaviour**, not on a spec, and a CPython
+change has already moved them once. The fix for CVE-2023-27043 (Python 3.11.10, 3.12.6, 3.13)
+made `parseaddr` and `getaddresses` strict about ambiguous input. On 3.12.5 the same corpus
+gives different counts: `parseaddr("Doe, John <john@example.com>")` returns `"Doe"` instead
+of `""`. The claims here describe the fixed parser, so the package refuses older patch
+releases at install time (`requires-python`) and at import time.
 
 **Nothing here fixes anything.** Clean the recipient list, publish a deadline you can actually
 verify against, and accept that for most recipients you will never know.
@@ -318,7 +328,7 @@ is the smallest a compliant MTA could produce rather than the most alarming.
 
 | Concern | Choice |
 |:--|:--|
-| Language | Python 3.11+ |
+| Language | Python 3.11.10+, 3.12.6+ or 3.13+ (the CVE-2023-27043 parser fix) |
 | Models + config | Pydantic, Pydantic Settings |
 | CLI | Click |
 | Templates | Jinja2 with **StrictUndefined**, so a missing fact fails loudly instead of rendering blank |
