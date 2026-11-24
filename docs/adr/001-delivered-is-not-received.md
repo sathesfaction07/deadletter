@@ -5,7 +5,7 @@
 
 ## Context
 
-The brief asks *"did every recipient actually receive the notification?"* and answers:
+The project brief asks *"did every recipient actually receive the notification?"* and answers:
 
 > **Verdict:** SES for delivery confidence. Bounce/complaint tracking tells you who didn't
 > receive it.

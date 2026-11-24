@@ -4,7 +4,7 @@
 
 Sends a recall notice, then reports what a delivery report **cannot** tell you.
 
-**Design principle:** the brief asks *"did every recipient actually receive the
+**Design principle:** the project brief asks *"did every recipient actually receive the
 notification?"* and answers *"bounce/complaint tracking tells you who didn't receive it."*
 It does not. It enumerates a **lower bound** on the failures, and the part it misses arrives
 **after** the deadline it was meant to protect.
@@ -106,7 +106,7 @@ No model. The accuracy problem is RFC semantics and time arithmetic.
 │  So bounce tracking is a post-mortem instrument -- genuinely useful for the    │
 │  post-mortem, and not an input to the decision it is asked to inform.         │
 │                                                                              │
-│  give_up_hours defaults to the LOW end of the spec's own range, so the lag     │
+│  give_up_hours defaults to the LOW end of the project brief's own range, so the lag     │
 │  reported is the smallest a compliant MTA could produce, not the worst.       │
 └────────────────────────────────┬─────────────────────────────────────────────┘
                                  ▼
@@ -175,7 +175,7 @@ No model. The accuracy problem is RFC semantics and time arithmetic.
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                             identity.py                                       │
 │                                                                              │
-│  The brief asks for "batch deduplication: don't notify the same recipient     │
+│  The project brief asks for "batch deduplication: don't notify the same recipient     │
 │  twice". That needs an identity function on addresses, and there isn't one.   │
 │                                                                              │
 │  RFC 5321 2.4: the LOCAL PART IS CASE-SENSITIVE; only the domain is not. So   │
@@ -196,14 +196,14 @@ No model. The accuracy problem is RFC semantics and time arithmetic.
 │  the truth lies. Merge too eagerly and customers are never told; merge too    │
 │  little and they get a second copy. Same arithmetic, wildly different cost --  │
 │  so for a SAFETY notice the defensible default is the one that DUPLICATES,     │
-│  which is exactly the behaviour the brief asks to remove.                     │
+│  which is exactly the behaviour the project brief asks to remove.                     │
 │                                                                              │
 │  normalise_per_domain()  the obvious improvement, included BECAUSE it does    │
 │    not escape the problem: it still rests on FOLDING_DOMAINS, a hardcoded     │
 │    guess that cannot be derived from an address and that goes stale. It moves │
 │    the unknowable part rather than removing it. `doctor` says so.             │
 │                                                                              │
-│  Dedup is NOT new here -- five other portfolio projects do it. What is new is │
+│  Dedup is NOT new here -- five sibling projects do it. What is new is        │
 │  that the KEY is unknowable.                                                  │
 └────────────────────────────────┬─────────────────────────────────────────────┘
                                  ▼

@@ -23,9 +23,9 @@ project.
 Bounce tracking enumerates a **lower bound** on the failures. It cannot enumerate the failure
 set, and the part it misses arrives after the deadline it was meant to protect.
 
-The diligence check also found the mechanisms genuinely absent portfolio-wide — `smtplib`,
+A survey of the sibling projects also found the mechanisms genuinely absent from all of them — `smtplib`,
 MIME, SES, `EmailStr`, `email-validator`, RFC 5321/5322, DSN handling: **zero files each**.
-Dedup exists in five other projects, so that is named as a repeat; what is new is that **the
+Dedup exists in five sibling projects, so that is named as a repeat; what is new is that **the
 identity function for an email address does not exist.**
 
 ---
@@ -151,7 +151,7 @@ folded       -> 1
 Same five addresses, **between one and five people.** Merge too eagerly and up to four
 customers are never told. Merge too little and up to four get a duplicate. Same number,
 wildly different cost — so for a safety notice the defensible default is the one that
-**duplicates**, which is exactly the behaviour the brief asks to remove.
+**duplicates**, which is exactly the behaviour the project brief asks to remove.
 
 ---
 
@@ -269,7 +269,7 @@ requires adjacency.
 sender *cannot* learn, and a real socket changes none of them. Outcomes come from a
 deterministic fixture, which `doctor` says out loud.
 
-**Route through SES or the Gmail API**, which the brief asks for. Worth doing — the brief is
+**Route through SES or the Gmail API**, which the project brief asks for. Worth doing — the project brief is
 right that SES beats raw SMTP — but it does not change a single conclusion above, and the
 conclusions were the point.
 
@@ -319,7 +319,7 @@ RN_NORMALISATION=rfc5321     # exact | rfc5321 | lowercase | folded
 RN_TEXT_FROM_HTML=false      # true reproduces the shortcut, and what it costs
 ```
 
-`give_up_hours` defaults to the **low** end of the spec's range, so the lag this tool reports
+`give_up_hours` defaults to the **low** end of the project brief's range, so the lag this tool reports
 is the smallest a compliant MTA could produce rather than the most alarming.
 
 ---
